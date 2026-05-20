@@ -9,6 +9,7 @@ class QDoubleSpinBox;
 class QCheckBox;
 class QPushButton;
 class QLabel;
+class QTabWidget;
 class QTextEdit;
 class QTableWidget;
 class SurfaceWidget;
@@ -20,16 +21,23 @@ public:
     explicit PoissonWindow(QWidget* parent = nullptr);
 
     void onDrawClicked();
+    void onTabChanged(int index);
 
 private:
     void drawSolution();
+    void drawMainProblem();
     void updateReport(const SolverResult& result);
+    void updateMainReport(const SolverResult& resultMain, const SolverResult& resultHalf, double maxDiff, int maxI, int maxJ);
     double computeOmega() const;
     QTableWidget* createTable1();
+    QTableWidget* createMainTable();
     void fillTables();
+    void fillMainTables();
 
     Field2D exactField;
     Field2D numericField;
+    Field2D mainField;
+    Field2D mainFieldHalf;
     TestProblem testProb;
 
     QSpinBox* xSpinBox;
@@ -38,10 +46,14 @@ private:
     QCheckBox* autoOmegaCheck;
     QPushButton* drawButton;
     QLabel* infoLabel;
+    QTabWidget* taskTabs;
     SurfaceWidget* surfaceWidget;
+    SurfaceWidget* mainSurfaceWidget;
     
     QTextEdit* reportText;
+    QTextEdit* mainReportText;
     QTableWidget* resultTable;
+    QTableWidget* mainResultTable;
 
     int currentN;
     int currentM;
@@ -50,4 +62,8 @@ private:
     int maxIter;
     int lastIterations;
     double lastAchievedEps;
+    int mainLastIterations;
+    double mainLastAchievedEps;
+    int mainLastIterationsHalf;
+    double mainLastAchievedEpsHalf;
 };

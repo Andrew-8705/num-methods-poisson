@@ -7,13 +7,14 @@
 #include <QDoubleSpinBox>
 #include <QFormLayout>
 #include <QLabel>
+#include <QHeaderView>
 #include <QPainter>
 #include <QPushButton>
 #include <QSpinBox>
+#include <QTabWidget>
 #include <QTableWidget>
 #include <QTextEdit>
 #include <QWidget>
-#include <QHeaderView>
 QRgb mapValueToColor(double value, double minValue, double maxValue) {
     if (maxValue <= minValue) {
         return qRgb(0, 120, 220);
@@ -51,11 +52,15 @@ public:
     {
         setMinimumSize(500, 400);
         setMaximumSize(550, 450);
+        setAutoFillBackground(true);
+        setStyleSheet("background-color: white;");
     }
 
-    void setFields(const Field2D& exactField_, const Field2D& numericField_) {
-        exact = exactField_;
-        numeric = numericField_;
+    void setFields(const Field2D& leftField_, const Field2D& rightField_, const QString& leftTitle_, const QString& rightTitle_) {
+        leftField = leftField_;
+        rightField = rightField_;
+        leftTitle = leftTitle_;
+        rightTitle = rightTitle_;
         update();
     }
 
@@ -67,13 +72,18 @@ protected:
         QRect leftRect(10, 10, width() / 2 - 20, height() - 20);
         QRect rightRect(width() / 2 + 10, 10, width() / 2 - 20, height() - 20);
 
-        drawSurface(painter, exact, leftRect, QStringLiteral("Точное решение"));
-        drawSurface(painter, numeric, rightRect, QStringLiteral("Численное решение"));
+        painter.fillRect(leftRect, Qt::white);
+        painter.fillRect(rightRect, Qt::white);
+
+        drawSurface(painter, leftField, leftRect, leftTitle);
+        drawSurface(painter, rightField, rightRect, rightTitle);
     }
 
 private:
-    Field2D exact;
-    Field2D numeric;
+    Field2D leftField;
+    Field2D rightField;
+    QString leftTitle;
+    QString rightTitle;
 
     void drawSurface(QPainter& painter, const Field2D& field, const QRect& area, const QString& title) {
         double minValue = field.values.empty() ? 0.0 : field.values[0];
@@ -222,13 +232,14 @@ PoissonWindow::PoissonWindow(QWidget* parent)
     infoLabel->setAlignment(Qt::AlignHCenter);
     infoLabel->setText(QStringLiteral("Итераций: -, Достигнутая точность: -"));
 
-    auto* contentLayout = new QHBoxLayout();
-    
-    // Левая панель: Графики и Справка под ними
-    auto* leftPanel = new QVBoxLayout();
+    taskTabs = new QTabWidget(this);
+
+    QWidget* testPage = new QWidget(this);
+    auto* testPageLayout = new QHBoxLayout(testPage);
+    auto* testLeftPanel = new QVBoxLayout();
     surfaceWidget = new SurfaceWidget(this);
-    leftPanel->addWidget(surfaceWidget);
-    leftPanel->addSpacing(8);
+    testLeftPanel->addWidget(surfaceWidget);
+    testLeftPanel->addSpacing(8);
 
     QLabel* reportLabel = new QLabel(QStringLiteral("Справка"), this);
     reportLabel->setStyleSheet("font-weight: bold; font-size: 12px;");
@@ -237,32 +248,60 @@ PoissonWindow::PoissonWindow(QWidget* parent)
     reportText->setMaximumHeight(180);
     reportText->setFontPointSize(8);
 
-    leftPanel->addWidget(reportLabel);
-    leftPanel->addWidget(reportText);
-    leftPanel->addStretch();
-    
-    // Правая панель: Таблица во всю ширину и высоту
-    auto* rightPanel = new QVBoxLayout();
-    rightPanel->setSpacing(8);
-    rightPanel->setContentsMargins(8, 0, 8, 0);
+    testLeftPanel->addWidget(reportLabel);
+    testLeftPanel->addWidget(reportText);
+    testLeftPanel->addStretch();
+
+    auto* testRightPanel = new QVBoxLayout();
+    testRightPanel->setSpacing(8);
+    testRightPanel->setContentsMargins(8, 0, 8, 0);
 
     resultTable = createTable1();
     resultTable->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    
-    // Автоматически растягиваем колонки по всей ширине таблицы
     resultTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    testRightPanel->addWidget(resultTable, 1);
 
-    // Добавляем таблицу (больше никаких addStretch снизу, чтобы она не сжималась)
-    rightPanel->addWidget(resultTable, 1);
-    
-    // Задаем пропорции панелей 1 к 1, чтобы правая панель сдвинулась влево
-    contentLayout->addLayout(leftPanel, 1);
-    contentLayout->addLayout(rightPanel, 1);
+    testPageLayout->addLayout(testLeftPanel, 1);
+    testPageLayout->addLayout(testRightPanel, 1);
+
+    QWidget* mainPage = new QWidget(this);
+    auto* mainPageLayout = new QHBoxLayout(mainPage);
+    auto* mainLeftPanel = new QVBoxLayout();
+    mainSurfaceWidget = new SurfaceWidget(this);
+    mainLeftPanel->addWidget(mainSurfaceWidget);
+    mainLeftPanel->addSpacing(8);
+
+    QLabel* mainReportLabel = new QLabel(QStringLiteral("Справка"), this);
+    mainReportLabel->setStyleSheet("font-weight: bold; font-size: 12px;");
+    mainReportText = new QTextEdit(this);
+    mainReportText->setReadOnly(true);
+    mainReportText->setMaximumHeight(180);
+    mainReportText->setFontPointSize(8);
+
+    mainLeftPanel->addWidget(mainReportLabel);
+    mainLeftPanel->addWidget(mainReportText);
+    mainLeftPanel->addStretch();
+
+    auto* mainRightPanel = new QVBoxLayout();
+    mainRightPanel->setSpacing(8);
+    mainRightPanel->setContentsMargins(8, 0, 8, 0);
+
+    mainResultTable = createMainTable();
+    mainResultTable->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    mainResultTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    mainRightPanel->addWidget(mainResultTable, 1);
+
+    mainPageLayout->addLayout(mainLeftPanel, 1);
+    mainPageLayout->addLayout(mainRightPanel, 1);
+
+    taskTabs->addTab(testPage, QStringLiteral("Тестовая задача"));
+    taskTabs->addTab(mainPage, QStringLiteral("Основная задача"));
+    connect(taskTabs, &QTabWidget::currentChanged, this, &PoissonWindow::onTabChanged);
 
     mainLayout->addWidget(titleLabel);
     mainLayout->addLayout(controlLayout);
     mainLayout->addWidget(infoLabel);
-    mainLayout->addLayout(contentLayout, 1);
+    mainLayout->addWidget(taskTabs, 1);
 
     setWindowTitle(QStringLiteral("Poisson Solver GUI"));
     resize(1400, 900);
@@ -281,10 +320,26 @@ QTableWidget* PoissonWindow::createTable1() {
     return table;
 }
 
+QTableWidget* PoissonWindow::createMainTable() {
+    QTableWidget* table = new QTableWidget(this);
+    table->setColumnCount(5);
+    table->setHorizontalHeaderLabels({QStringLiteral("i, j"),
+                                      QStringLiteral("x, y"),
+                                      QStringLiteral("u_N(x,y)"),
+                                      QStringLiteral("u_{2N}(x,y)"),
+                                      QStringLiteral("|Δu|")});
+    table->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    return table;
+}
+
 void PoissonWindow::onDrawClicked() {
     currentN = xSpinBox->value();
     currentM = ySpinBox->value();
-    drawSolution();
+    if (taskTabs->currentIndex() == 0) {
+        drawSolution();
+    } else {
+        drawMainProblem();
+    }
 }
 
 double PoissonWindow::computeOmega() const {
@@ -300,7 +355,8 @@ void PoissonWindow::drawSolution() {
     SolverResult result = PoissonBackend::solveTestProblem(currentN, currentM, eps, maxIter, currentOmega);
     exactField = PoissonBackend::exactSolution(testProb, currentN, currentM);
     numericField = PoissonBackend::fieldFromGrid(result.grid);
-    surfaceWidget->setFields(exactField, numericField);
+    surfaceWidget->setFields(exactField, numericField,
+                             QStringLiteral("Точное решение"), QStringLiteral("Численное решение"));
     
     lastIterations = result.iterations;
     lastAchievedEps = result.achieved_eps;
@@ -339,6 +395,116 @@ void PoissonWindow::updateReport(const SolverResult& result) {
      .arg(currentOmega, 0, 'f', 4);
     
     reportText->setText(report);
+}
+
+void PoissonWindow::onTabChanged(int /*index*/) {
+    // Построение происходит только по кнопке "Построить".
+}
+
+void PoissonWindow::drawMainProblem() {
+    currentOmega = computeOmega();
+    SolverResult resultMain = PoissonBackend::solveMainProblem(currentN, currentM, eps, maxIter, currentOmega);
+    SolverResult resultHalf = PoissonBackend::solveMainProblem(currentN * 2, currentM * 2, eps, maxIter, currentOmega);
+
+    mainField = PoissonBackend::fieldFromGrid(resultMain.grid);
+    mainFieldHalf = PoissonBackend::fieldFromGrid(resultHalf.grid);
+    mainSurfaceWidget->setFields(mainField, mainFieldHalf,
+                                 QStringLiteral("Численное решение"), QStringLiteral("Численное решение (половина шага)"));
+
+    mainLastIterations = resultMain.iterations;
+    mainLastAchievedEps = resultMain.achieved_eps;
+    mainLastIterationsHalf = resultHalf.iterations;
+    mainLastAchievedEpsHalf = resultHalf.achieved_eps;
+
+    double maxDiff = 0.0;
+    int maxI = 0, maxJ = 0;
+    if (mainFieldHalf.n == mainField.n * 2 && mainFieldHalf.m == mainField.m * 2) {
+        for (int i = 0; i <= mainField.n; ++i) {
+            for (int j = 0; j <= mainField.m; ++j) {
+                double coarse = mainField.at(i, j);
+                double halfStep = mainFieldHalf.at(2 * i, 2 * j);
+                double diff = std::abs(coarse - halfStep);
+                if (diff > maxDiff) {
+                    maxDiff = diff;
+                    maxI = i;
+                    maxJ = j;
+                }
+            }
+        }
+    }
+
+    infoLabel->setText(QStringLiteral("Итераций: %1 / %2, Достигнутая точность: %3 / %4")
+            .arg(mainLastIterations)
+            .arg(mainLastIterationsHalf)
+            .arg(mainLastAchievedEps, 0, 'g', 6)
+            .arg(mainLastAchievedEpsHalf, 0, 'g', 6));
+
+    updateMainReport(resultMain, resultHalf, maxDiff, maxI, maxJ);
+    fillMainTables();
+}
+
+void PoissonWindow::updateMainReport(const SolverResult& resultMain, const SolverResult& resultHalf,
+                                     double maxDiff, int maxI, int maxJ) {
+    QString report = QStringLiteral(
+        "Решение основной задачи на сетке n=%1, m=%2\n"
+        "Метод: верхняя релаксация, ω=%7\n"
+        "Критерии остановки:\n"
+        "  εмет = %3\n"
+        "  Nmax = %4\n"
+        "\n"
+        "Основная сетка:\n"
+        "  N = %5 итераций, ε(N) = %6\n"
+        "Половинчатая сетка 2n×2m:\n"
+        "  N = %8 итераций, ε(N) = %9\n"
+        "\n"
+        "Сравнение решений:\n"
+        "  Максимальная разница между u_N и u_{2N}: %10 в точке (i=%11, j=%12)"
+    ).arg(currentN).arg(currentM)
+     .arg(eps, 0, 'e', 2)
+     .arg(maxIter)
+     .arg(resultMain.iterations)
+     .arg(resultMain.achieved_eps, 0, 'e', 2)
+     .arg(currentOmega, 0, 'f', 4)
+     .arg(resultHalf.iterations)
+     .arg(resultHalf.achieved_eps, 0, 'e', 2)
+     .arg(maxDiff, 0, 'e', 2)
+     .arg(maxI)
+     .arg(maxJ);
+
+    mainReportText->setText(report);
+}
+
+void PoissonWindow::fillMainTables() {
+    if (!mainResultTable) {
+        return;
+    }
+
+    mainResultTable->setRowCount(0);
+    mainResultTable->setUpdatesEnabled(false);
+
+    int row = 0;
+    for (int i = 0; i <= mainField.n; ++i) {
+        for (int j = 0; j <= mainField.m; ++j) {
+            mainResultTable->insertRow(row);
+            double x = mainField.a + i * (mainField.b - mainField.a) / mainField.n;
+            double y = mainField.c + j * (mainField.d - mainField.c) / mainField.m;
+            double coarse = mainField.at(i, j);
+            double halfStep = 0.0;
+            if (mainFieldHalf.n == mainField.n * 2 && mainFieldHalf.m == mainField.m * 2) {
+                halfStep = mainFieldHalf.at(2 * i, 2 * j);
+            }
+            double diff = std::abs(coarse - halfStep);
+
+            mainResultTable->setItem(row, 0, new QTableWidgetItem(QStringLiteral("%1, %2").arg(i).arg(j)));
+            mainResultTable->setItem(row, 1, new QTableWidgetItem(QStringLiteral("%1, %2").arg(x, 0, 'g', 5).arg(y, 0, 'g', 5)));
+            mainResultTable->setItem(row, 2, new QTableWidgetItem(QString::number(coarse, 'g', 5)));
+            mainResultTable->setItem(row, 3, new QTableWidgetItem(QString::number(halfStep, 'g', 5)));
+            mainResultTable->setItem(row, 4, new QTableWidgetItem(QString::number(diff, 'e', 2)));
+            row++;
+        }
+    }
+
+    mainResultTable->setUpdatesEnabled(true);
 }
 
 void PoissonWindow::fillTables() {

@@ -1,4 +1,5 @@
 #include "Qt/PoissonBackend.h"
+#include "Problems/MainProblem.h"
 #include "Solvers/SORSolver.h"
 
 #include <algorithm>
@@ -31,6 +32,12 @@ SolverResult PoissonBackend::solveTestProblem(int n, int m, double eps_max, int 
     TestProblem testProb;
     SORSolver solver(omega);
     return solver.solve(testProb, n, m, eps_max, max_iter);
+}
+
+SolverResult PoissonBackend::solveMainProblem(int n, int m, double eps_max, int max_iter, double omega) {
+    MainProblem mainProb;
+    SORSolver solver(omega);
+    return solver.solve(mainProb, n, m, eps_max, max_iter);
 }
 
 double PoissonBackend::calculateOptimalOmega(int n, int m, double a, double b, double c, double d) {
