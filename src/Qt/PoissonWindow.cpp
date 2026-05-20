@@ -197,10 +197,10 @@ PoissonWindow::PoissonWindow(QWidget* parent)
     auto* controlLayout = new QHBoxLayout();
     auto* formLayout = new QFormLayout();
     xSpinBox = new QSpinBox(this);
-    xSpinBox->setRange(5, 200);
+    xSpinBox->setRange(5, 10000);
     xSpinBox->setValue(currentN);
     ySpinBox = new QSpinBox(this);
-    ySpinBox->setRange(5, 200);
+    ySpinBox->setRange(5, 10000);
     ySpinBox->setValue(currentM);
 
     omegaSpinBox = new QDoubleSpinBox(this);
