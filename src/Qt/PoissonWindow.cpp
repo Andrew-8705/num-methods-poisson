@@ -8,6 +8,7 @@
 #include <QFormLayout>
 #include <QLabel>
 #include <QHeaderView>
+#include <QMouseEvent>
 #include <QPainter>
 #include <QPushButton>
 #include <QSpinBox>
@@ -48,12 +49,13 @@ QPointF projectPoint(double x, double y, double z, const Field2D& field, const Q
 class SurfaceWidget : public QWidget {
 public:
     SurfaceWidget(QWidget* parent = nullptr)
-        : QWidget(parent)
+        : QWidget(parent), rotationAngle(0.0), mousePressed(false), lastMouseX(0)
     {
         setMinimumSize(500, 400);
         setMaximumSize(550, 450);
         setAutoFillBackground(true);
         setStyleSheet("background-color: white;");
+        setMouseTracking(false);
     }
 
     void setFields(const Field2D& leftField_, const Field2D& rightField_, const QString& leftTitle_, const QString& rightTitle_) {
@@ -65,6 +67,28 @@ public:
     }
 
 protected:
+    void mousePressEvent(QMouseEvent* event) override {
+        if (event->button() == Qt::LeftButton) {
+            mousePressed = true;
+            lastMouseX = static_cast<int>(event->position().x());
+        }
+    }
+
+    void mouseReleaseEvent(QMouseEvent* event) override {
+        if (event->button() == Qt::LeftButton) {
+            mousePressed = false;
+        }
+    }
+
+    void mouseMoveEvent(QMouseEvent* event) override {
+        if (mousePressed) {
+            int deltaX = static_cast<int>(event->position().x()) - lastMouseX;
+            rotationAngle += deltaX * 0.5;
+            lastMouseX = static_cast<int>(event->position().x());
+            update();
+        }
+    }
+
     void paintEvent(QPaintEvent* /*event*/) override {
         QPainter painter(this);
         painter.fillRect(rect(), Qt::white);
@@ -84,9 +108,58 @@ private:
     Field2D rightField;
     QString leftTitle;
     QString rightTitle;
+    double rotationAngle;
+    bool mousePressed;
+    int lastMouseX;
+
+    QPointF projectPointWithRotation(double x, double y, double z, const Field2D& field, const QRect& area,
+                                     double minValue, double maxValue) {
+        // Применяем ротацию вокруг оси Z в 3D пространстве
+        double radians = rotationAngle * M_PI / 180.0;
+        
+        // Сдвигаем в центр для ротации
+        double cx_3d = (field.a + field.b) / 2.0;
+        double cy_3d = (field.c + field.d) / 2.0;
+        
+        double x_rel = x - cx_3d;
+        double y_rel = y - cy_3d;
+        
+        // Матрица ротации вокруг оси Z
+        double x_rot = x_rel * std::cos(radians) - y_rel * std::sin(radians);
+        double y_rot = x_rel * std::sin(radians) + y_rel * std::cos(radians);
+        
+        // Возвращаем в исходные координаты
+        double x_final = x_rot + cx_3d;
+        double y_final = y_rot + cy_3d;
+        
+        // Стандартная проекция с фиксированным углом
+        constexpr double cosA = 0.7660444431;
+        constexpr double sinA = 0.6427876097;
+
+        double nx = (x_final - field.a) / (field.b - field.a);
+        double ny = (y_final - field.c) / (field.d - field.c);
+        double nz = (z - minValue) / (maxValue - minValue);
+
+        double px = (nx - ny) * cosA;
+        double py = (nx + ny) * sinA - nz * 0.8;
+
+        double scale = std::min(area.width(), area.height()) / 2.8;
+        double cx = area.left() + area.width() * 0.5;
+        double cy = area.top() + area.height() * 0.55;
+
+        return QPointF(cx + px * scale, cy - py * scale);
+    }
 
     void drawSurface(QPainter& painter, const Field2D& field, const QRect& area, const QString& title) {
-        double minValue = field.values.empty() ? 0.0 : field.values[0];
+        // Проверка валидности поля
+        if (field.n <= 0 || field.m <= 0 || field.values.empty()) {
+            painter.fillRect(area, Qt::white);
+            painter.drawRect(area);
+            painter.drawText(area, Qt::AlignCenter, QStringLiteral("Нет данных"));
+            return;
+        }
+
+        double minValue = field.values[0];
         double maxValue = minValue;
         for (double value : field.values) {
             minValue = std::min(minValue, value);
@@ -95,7 +168,7 @@ private:
 
         struct Cell { double depth; int i; int j; };
         std::vector<Cell> cells;
-        cells.reserve(field.n * field.m);
+        cells.reserve(static_cast<size_t>(field.n) * static_cast<size_t>(field.m));
 
         for (int i = 0; i < field.n; ++i) {
             for (int j = 0; j < field.m; ++j) {
@@ -128,10 +201,10 @@ private:
             double avgZ = (z00 + z10 + z01 + z11) * 0.25;
 
             QPolygonF quad;
-            quad << projectPoint(x0, y0, z00, field, area, minValue, maxValue);
-            quad << projectPoint(x1, y0, z10, field, area, minValue, maxValue);
-            quad << projectPoint(x1, y1, z11, field, area, minValue, maxValue);
-            quad << projectPoint(x0, y1, z01, field, area, minValue, maxValue);
+            quad << projectPointWithRotation(x0, y0, z00, field, area, minValue, maxValue);
+            quad << projectPointWithRotation(x1, y0, z10, field, area, minValue, maxValue);
+            quad << projectPointWithRotation(x1, y1, z11, field, area, minValue, maxValue);
+            quad << projectPointWithRotation(x0, y1, z01, field, area, minValue, maxValue);
 
             QColor color(mapValueToColor(avgZ, minValue, maxValue));
             color.setAlpha(220);
@@ -140,10 +213,10 @@ private:
             painter.drawPolyline(quad);
         }
 
-        QPointF origin = projectPoint(field.a, field.c, minValue, field, area, minValue, maxValue);
-        QPointF xEnd = projectPoint(field.b, field.c, minValue, field, area, minValue, maxValue);
-        QPointF yEnd = projectPoint(field.a, field.d, minValue, field, area, minValue, maxValue);
-        QPointF zEnd = projectPoint(field.a, field.c, maxValue, field, area, minValue, maxValue);
+        QPointF origin = projectPointWithRotation(field.a, field.c, minValue, field, area, minValue, maxValue);
+        QPointF xEnd = projectPointWithRotation(field.b, field.c, minValue, field, area, minValue, maxValue);
+        QPointF yEnd = projectPointWithRotation(field.a, field.d, minValue, field, area, minValue, maxValue);
+        QPointF zEnd = projectPointWithRotation(field.a, field.c, maxValue, field, area, minValue, maxValue);
 
         painter.setPen(QPen(Qt::black, 2));
         painter.drawLine(origin, xEnd);
@@ -408,6 +481,12 @@ void PoissonWindow::drawMainProblem() {
 
     mainField = PoissonBackend::fieldFromGrid(resultMain.grid);
     mainFieldHalf = PoissonBackend::fieldFromGrid(resultHalf.grid);
+    
+    if (mainField.n <= 0 || mainField.m <= 0 || mainFieldHalf.n <= 0 || mainFieldHalf.m <= 0) {
+        mainReportText->setText(QStringLiteral("Ошибка при решении задачи"));
+        return;
+    }
+
     mainSurfaceWidget->setFields(mainField, mainFieldHalf,
                                  QStringLiteral("Численное решение"), QStringLiteral("Численное решение (половина шага)"));
 

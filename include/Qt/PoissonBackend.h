@@ -15,6 +15,8 @@ struct Field2D {
     double d;
     std::vector<double> values;
 
+    Field2D() : n(0), m(0), a(0), b(0), c(0), d(0) {}
+
     double at(int i, int j) const {
         return values[i * (m + 1) + j];
     }
