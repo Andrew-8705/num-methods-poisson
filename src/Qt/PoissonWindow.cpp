@@ -243,7 +243,6 @@ PoissonWindow::PoissonWindow(QWidget* parent)
     , xSpinBox(nullptr)
     , ySpinBox(nullptr)
     , drawButton(nullptr)
-    , infoLabel(nullptr)
     , surfaceWidget(nullptr)
     , reportText(nullptr)
     , resultTable(nullptr)
@@ -300,10 +299,6 @@ PoissonWindow::PoissonWindow(QWidget* parent)
     controlLayout->addLayout(formLayout);
     controlLayout->addWidget(drawButton);
     controlLayout->addStretch();
-
-    infoLabel = new QLabel(this);
-    infoLabel->setAlignment(Qt::AlignHCenter);
-    infoLabel->setText(QStringLiteral("Итераций: -, Достигнутая точность: -"));
 
     taskTabs = new QTabWidget(this);
 
@@ -373,7 +368,6 @@ PoissonWindow::PoissonWindow(QWidget* parent)
 
     mainLayout->addWidget(titleLabel);
     mainLayout->addLayout(controlLayout);
-    mainLayout->addWidget(infoLabel);
     mainLayout->addWidget(taskTabs, 1);
 
     setWindowTitle(QStringLiteral("Poisson Solver GUI"));
@@ -434,10 +428,6 @@ void PoissonWindow::drawSolution() {
     lastIterations = result.iterations;
     lastAchievedEps = result.achieved_eps;
     
-    infoLabel->setText(QStringLiteral("Итераций: %1, Достигнутая точность: %2")
-            .arg(result.iterations)
-            .arg(result.achieved_eps, 0, 'g', 6));
-    
     updateReport(result);
     fillTables();
 }
@@ -446,19 +436,17 @@ void PoissonWindow::updateReport(const SolverResult& result) {
     double globalError = PoissonBackend::calculateGlobalError(exactField, numericField);
     
     QString report = QStringLiteral(
-        "Сетка: n=%1, m=%2\n"
-        "Метод верхней релаксации (ω=%8)\n"
+        "Для решения тестовой задачи использованы сетка с числом разбиений по x\n"
+        "n=%1 и числом разбиений по y m=%2,\n"
+        "метод верхней релаксации с параметром ω=%8, применены критерии\n"
+        "остановки по точности ε_мет=%3 и по числу итераций N_max=%4.\n"
         "\n"
-        "Критерии остановки:\n"
-        "εмет = %3\n"
-        "Nmax = %4\n"
+        "На решение схемы (СЛАУ) затрачено итераций N=%5\n"
+        "и достигнута точность итерационного метода ε(N)=%6.\n"
         "\n"
-        "Результаты:\n"
-        "Затрачено итераций N = %5\n"
-        "Достигнута точность ε(N) = %6\n"
         "\n"
-        "Глобальная ошибка схемы:\n"
-        "ε1 = %7"
+        "Тестовая задача должна быть решена с погрешностью не более ε = %3;\n"
+        "задача решена с погрешностью ε1 = %7"
     ).arg(currentN).arg(currentM)
      .arg(eps, 0, 'e', 2)
      .arg(maxIter)
@@ -511,12 +499,6 @@ void PoissonWindow::drawMainProblem() {
             }
         }
     }
-
-    infoLabel->setText(QStringLiteral("Итераций: %1 / %2, Достигнутая точность: %3 / %4")
-            .arg(mainLastIterations)
-            .arg(mainLastIterationsHalf)
-            .arg(mainLastAchievedEps, 0, 'g', 6)
-            .arg(mainLastAchievedEpsHalf, 0, 'g', 6));
 
     updateMainReport(resultMain, resultHalf, maxDiff, maxI, maxJ);
     fillMainTables();

@@ -45,7 +45,6 @@ private:
     QDoubleSpinBox* omegaSpinBox;
     QCheckBox* autoOmegaCheck;
     QPushButton* drawButton;
-    QLabel* infoLabel;
     QTabWidget* taskTabs;
     SurfaceWidget* surfaceWidget;
     SurfaceWidget* mainSurfaceWidget;
