@@ -281,6 +281,17 @@ PoissonWindow::PoissonWindow(QWidget* parent)
     omegaSpinBox->setDecimals(3);
     omegaSpinBox->setValue(1.0);
 
+    epsSpinBox = new QDoubleSpinBox(this);
+    epsSpinBox->setRange(1e-12, 1e-2);
+    epsSpinBox->setSingleStep(1e-7);
+    epsSpinBox->setDecimals(10);
+    epsSpinBox->setValue(eps);
+
+    maxIterSpinBox = new QSpinBox(this);
+    maxIterSpinBox->setRange(10, 1000000);
+    maxIterSpinBox->setSingleStep(10);
+    maxIterSpinBox->setValue(maxIter);
+
     autoOmegaCheck = new QCheckBox(QStringLiteral("Автоподбор ω"), this);
     autoOmegaCheck->setChecked(true);
     omegaSpinBox->setEnabled(false);
@@ -291,6 +302,8 @@ PoissonWindow::PoissonWindow(QWidget* parent)
     formLayout->addRow(QStringLiteral("n (шагов X):"), xSpinBox);
     formLayout->addRow(QStringLiteral("m (шагов Y):"), ySpinBox);
     formLayout->addRow(QStringLiteral("ω:"), omegaSpinBox);
+    formLayout->addRow(QStringLiteral("εмет:"), epsSpinBox);
+    formLayout->addRow(QStringLiteral("Nmax:"), maxIterSpinBox);
     formLayout->addRow(autoOmegaCheck);
 
     drawButton = new QPushButton(QStringLiteral("Построить"), this);
@@ -402,6 +415,8 @@ QTableWidget* PoissonWindow::createMainTable() {
 void PoissonWindow::onDrawClicked() {
     currentN = xSpinBox->value();
     currentM = ySpinBox->value();
+    eps = epsSpinBox->value();
+    maxIter = maxIterSpinBox->value();
     if (taskTabs->currentIndex() == 0) {
         drawSolution();
     } else {
@@ -446,7 +461,8 @@ void PoissonWindow::updateReport(const SolverResult& result) {
         "\n"
         "\n"
         "Тестовая задача должна быть решена с погрешностью не более ε = %3;\n"
-        "задача решена с погрешностью ε1 = %7"
+        "задача решена с погрешностью ε1 = %7\n"
+        "В качестве начального приближения использована интерполяция по x."
     ).arg(currentN).arg(currentM)
      .arg(eps, 0, 'e', 2)
      .arg(maxIter)

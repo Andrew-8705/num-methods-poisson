@@ -43,6 +43,8 @@ private:
     QSpinBox* xSpinBox;
     QSpinBox* ySpinBox;
     QDoubleSpinBox* omegaSpinBox;
+    QDoubleSpinBox* epsSpinBox;
+    QSpinBox* maxIterSpinBox;
     QCheckBox* autoOmegaCheck;
     QPushButton* drawButton;
     QTabWidget* taskTabs;
