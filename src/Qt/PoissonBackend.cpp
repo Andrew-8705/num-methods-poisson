@@ -27,10 +27,27 @@ Field2D PoissonBackend::exactSolution(const TestProblem& prob, int n, int m) {
     return field;
 }
 
-SolverResult PoissonBackend::solveTestProblem(int n, int m, double eps_max, int max_iter) {
+SolverResult PoissonBackend::solveTestProblem(int n, int m, double eps_max, int max_iter, double omega) {
     TestProblem testProb;
-    SORSolver solver(1.0);
+    SORSolver solver(omega);
     return solver.solve(testProb, n, m, eps_max, max_iter);
+}
+
+double PoissonBackend::calculateOptimalOmega(int n, int m, double a, double b, double c, double d) {
+    if (n <= 0 || m <= 0) {
+        return 1.0;
+    }
+
+    double h = (b - a) / n;
+    double k = (d - c) / m;
+    double invh2 = 1.0 / (h * h);
+    double invk2 = 1.0 / (k * k);
+    double rho = (invh2 * std::cos(M_PI / n) + invk2 * std::cos(M_PI / m)) / (invh2 + invk2);
+    rho = std::clamp(rho, -0.999999, 0.999999);
+    double omegaOpt = 2.0 / (1.0 + std::sqrt(1.0 - rho * rho));
+    if (omegaOpt < 1.0) omegaOpt = 1.0;
+    if (omegaOpt > 2.0) omegaOpt = 2.0;
+    return omegaOpt;
 }
 
 Field2D PoissonBackend::fieldFromGrid(const Grid& grid) {
