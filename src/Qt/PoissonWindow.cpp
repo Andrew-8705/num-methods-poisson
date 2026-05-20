@@ -474,9 +474,9 @@ void PoissonWindow::updateReport(const SolverResult& result) {
         "\n"
         "На решение схемы (СЛАУ) затрачено итераций N=%5\n"
         "и достигнута точность итерационного метода ε(N)=%6.\n"
-        "Максимальная невязка дискретной схемы r_max = %8\n"
+        "Схема (СЛАУ) решена с невязкой || R(N)|| = %8, использована норма max\n"
         "\n"
-        "Тестовая задача должна быть решена с погрешностью не более ε = %3;\n"
+        "Тестовая задача должна быть решена с погрешностью не более ε = 0.5⋅10^-6;\n"
         "задача решена с погрешностью ε1 = %7\n"
         "\n"
         "Максимальное отклонение точного и численного решений наблюдается в узле x=%10; y=%11\n"
@@ -538,37 +538,54 @@ void PoissonWindow::drawMainProblem() {
         }
     }
 
-    updateMainReport(resultMain, resultHalf, maxDiff, maxI, maxJ);
+    double xMax = mainField.a + maxI * (mainField.b - mainField.a) / mainField.n;
+    double yMax = mainField.c + maxJ * (mainField.d - mainField.c) / mainField.m;
+
+    updateMainReport(resultMain, resultHalf, maxDiff, maxI, maxJ, xMax, yMax);
     fillMainTables();
 }
 
 void PoissonWindow::updateMainReport(const SolverResult& resultMain, const SolverResult& resultHalf,
-                                     double maxDiff, int maxI, int maxJ) {
+                                     double maxDiff, int maxI, int maxJ,
+                                     double xMax, double yMax) {
     QString report = QStringLiteral(
-        "Решение основной задачи на сетке n=%1, m=%2\n"
-        "Метод: верхняя релаксация, ω=%7\n"
-        "Критерии остановки:\n"
-        "  εмет = %3\n"
-        "  Nmax = %4\n"
+        "Для решения основной задачи использована сетка с числом разбиений по x\n"
+        "n = %1 и числом разбиений по y m = %2,\n"
+        "метод верхней релаксации с параметром ω = %7, применены критерии\n"
+        "остановки по точности εмет = %3 и по числу итераций Nmax = %4\n"
         "\n"
-        "Основная сетка:\n"
-        "  N = %5 итераций, ε(N) = %6\n"
-        "Половинчатая сетка 2n×2m:\n"
-        "  N = %8 итераций, ε(N) = %9\n"
+        "На решение схемы (СЛАУ) затрачено итераций N = %5\n"
+        "и достигнута точность итерационного метода ε(N) = %6\n"
         "\n"
-        "Сравнение решений:\n"
-        "  Максимальная разница между u_N и u_{2N}: %10 в точке (i=%11, j=%12)"
+        "Схема (СЛАУ) решена с невязкой || R(N)|| = %8, использована норма max\n"
+        "\n"
+        "Для контроля точности решения использована сетка с половинным шагом,\n"
+        "метод верхней релаксации с параметром ω2 = %7,\n"
+        "применены критерии остановки по точности εмет-2 = %3 и по числу итераций Nmax-2 = %4\n"
+        "\n"
+        "На решение задачи (СЛАУ) затрачено итераций N2 = %9 и достигнута точность итерационного метода ε(N2) = %10\n"
+        "\n"
+        "Схема (СЛАУ) на сетке с половинным шагом решена с невязкой || R(N2)|| = %11, использована норма max\n"
+        "\n"
+        "Основная задача должна быть решена с точностью не хуже чем ε = 0.5⋅10^-6;\n"
+        "задача решена с точностью ε2 = %14\n"
+        "\n"
+        "Максимальное отклонение численных решений на основной сетке и сетке с\n"
+        "половинным шагом наблюдается в узле x=%12; y=%13\n"
+        "В качестве начального приближения использована интерполяция по x."
     ).arg(currentN).arg(currentM)
      .arg(eps, 0, 'e', 2)
      .arg(maxIter)
      .arg(resultMain.iterations)
      .arg(resultMain.achieved_eps, 0, 'e', 2)
      .arg(currentOmega, 0, 'f', 4)
+     .arg(resultMain.max_residual, 0, 'e', 2)
      .arg(resultHalf.iterations)
      .arg(resultHalf.achieved_eps, 0, 'e', 2)
-     .arg(maxDiff, 0, 'e', 2)
-     .arg(maxI)
-     .arg(maxJ);
+     .arg(resultHalf.max_residual, 0, 'e', 2)
+     .arg(xMax, 0, 'g', 5)
+     .arg(yMax, 0, 'g', 5)
+     .arg(maxDiff, 0, 'e', 2);
 
     mainReportText->setText(report);
 }
