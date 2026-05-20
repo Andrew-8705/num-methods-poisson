@@ -449,7 +449,23 @@ void PoissonWindow::drawSolution() {
 
 void PoissonWindow::updateReport(const SolverResult& result) {
     double globalError = PoissonBackend::calculateGlobalError(exactField, numericField);
-    
+    double maxDiff = 0.0;
+    int maxI = 0;
+    int maxJ = 0;
+    for (int i = 0; i <= exactField.n; ++i) {
+        for (int j = 0; j <= exactField.m; ++j) {
+            double diff = std::abs(exactField.at(i, j) - numericField.at(i, j));
+            if (diff > maxDiff) {
+                maxDiff = diff;
+                maxI = i;
+                maxJ = j;
+            }
+        }
+    }
+
+    double xMax = exactField.a + maxI * (exactField.b - exactField.a) / exactField.n;
+    double yMax = exactField.c + maxJ * (exactField.d - exactField.c) / exactField.m;
+
     QString report = QStringLiteral(
         "Для решения тестовой задачи использованы сетка с числом разбиений по x\n"
         "n=%1 и числом разбиений по y m=%2,\n"
@@ -462,6 +478,7 @@ void PoissonWindow::updateReport(const SolverResult& result) {
         "\n"
         "Тестовая задача должна быть решена с погрешностью не более ε = %3;\n"
         "задача решена с погрешностью ε1 = %7\n"
+        "Максимальное отклонение точного и численного решений наблюдается в узле x=%9; y=%10\n"
         "В качестве начального приближения использована интерполяция по x."
     ).arg(currentN).arg(currentM)
      .arg(eps, 0, 'e', 2)
@@ -469,7 +486,9 @@ void PoissonWindow::updateReport(const SolverResult& result) {
      .arg(result.iterations)
      .arg(result.achieved_eps, 0, 'e', 2)
      .arg(globalError, 0, 'e', 2)
-     .arg(currentOmega, 0, 'f', 4);
+     .arg(currentOmega, 0, 'f', 4)
+     .arg(xMax, 0, 'g', 5)
+     .arg(yMax, 0, 'g', 5);
     
     reportText->setText(report);
 }
