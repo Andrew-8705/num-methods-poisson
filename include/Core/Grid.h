@@ -20,4 +20,5 @@ struct SolverResult {
     Grid grid;
     int iterations;
     double achieved_eps;
+    double max_residual = 0.0;
 };

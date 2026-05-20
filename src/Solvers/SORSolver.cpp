@@ -45,6 +45,7 @@ SolverResult SORSolver::solve(const Problem& prob, int n, int m, double eps_max,
 
     int iter = 0;
     double current_eps = eps_max + 1.0;
+    double maxResidual = 0.0;
 
     // Оптимизируем кэш-память: i делаем внешним циклом, чтобы чтение шло последовательно по памяти
     while (iter < max_iter && current_eps > eps_max) {
@@ -72,5 +73,19 @@ SolverResult SORSolver::solve(const Problem& prob, int n, int m, double eps_max,
         iter++;
     }
 
-    return {grid, iter, current_eps};
+    for (int i = 1; i < n; ++i) {
+        for (int j = 1; j < m; ++j) {
+            double left_side = 2.0 * (h2_inv + k2_inv) * grid.data[i][j] -
+                               (grid.data[i-1][j] + grid.data[i+1][j]) * h2_inv -
+                               (grid.data[i][j-1] + grid.data[i][j+1]) * k2_inv;
+            
+            double residual = std::abs(left_side - F[i][j]);
+            
+            if (residual > maxResidual) {
+                maxResidual = residual;
+            }
+        }
+    }
+
+    return {grid, iter, current_eps, maxResidual};
 }
