@@ -29,7 +29,8 @@ private:
     void updateReport(const SolverResult& result);
     void updateMainReport(const SolverResult& resultMain, const SolverResult& resultHalf,
                           double maxDiff, int maxI, int maxJ,
-                          double xMax, double yMax);
+                          double xMax, double yMax,
+                          double omegaMain, double omegaHalf);
     double computeOmega() const;
     QTableWidget* createTable1();
     QTableWidget* createMainTable();

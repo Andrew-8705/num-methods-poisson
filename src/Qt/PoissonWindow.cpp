@@ -501,9 +501,17 @@ void PoissonWindow::onTabChanged(int /*index*/) {
 }
 
 void PoissonWindow::drawMainProblem() {
-    currentOmega = computeOmega();
-    SolverResult resultMain = PoissonBackend::solveMainProblem(currentN, currentM, eps, maxIter, currentOmega);
-    SolverResult resultHalf = PoissonBackend::solveMainProblem(currentN * 2, currentM * 2, eps, maxIter, currentOmega);
+    double omegaMain = computeOmega();
+    double omegaHalf;
+    if (autoOmegaCheck && autoOmegaCheck->isChecked()) {
+        omegaHalf = PoissonBackend::calculateOptimalOmega(currentN * 2, currentM * 2,
+                                                           testProb.a(), testProb.b(), testProb.c(), testProb.d());
+    } else {
+        omegaHalf = omegaSpinBox ? omegaSpinBox->value() : 1.0;
+    }
+
+    SolverResult resultMain = PoissonBackend::solveMainProblem(currentN, currentM, eps, maxIter, omegaMain);
+    SolverResult resultHalf = PoissonBackend::solveMainProblem(currentN * 2, currentM * 2, eps, maxIter, omegaHalf);
 
     mainField = PoissonBackend::fieldFromGrid(resultMain.grid);
     mainFieldHalf = PoissonBackend::fieldFromGrid(resultHalf.grid);
@@ -541,18 +549,19 @@ void PoissonWindow::drawMainProblem() {
     double xMax = mainField.a + maxI * (mainField.b - mainField.a) / mainField.n;
     double yMax = mainField.c + maxJ * (mainField.d - mainField.c) / mainField.m;
 
-    updateMainReport(resultMain, resultHalf, maxDiff, maxI, maxJ, xMax, yMax);
+    updateMainReport(resultMain, resultHalf, maxDiff, maxI, maxJ, xMax, yMax, omegaMain, omegaHalf);
     fillMainTables();
 }
 
 void PoissonWindow::updateMainReport(const SolverResult& resultMain, const SolverResult& resultHalf,
                                      double maxDiff, int maxI, int maxJ,
-                                     double xMax, double yMax) {
+                                     double xMax, double yMax, double omegaMain, double omegaHalf) {
     QString report = QStringLiteral(
         "Для решения основной задачи использована сетка с числом разбиений по x\n"
-        "n = %1 и числом разбиений по y m = %2,\n"
-        "метод верхней релаксации с параметром ω = %7, применены критерии\n"
-        "остановки по точности εмет = %3 и по числу итераций Nmax = %4\n"
+        "n = %1 и числом разбиений по y m = %2, метод верхней релаксации с параметром\n"
+        "ω = %7, применены критерии остановки по точности\n"
+        "εмет = %3\n"
+        "и по числу итераций Nmax = %4\n"
         "\n"
         "На решение схемы (СЛАУ) затрачено итераций N = %5\n"
         "и достигнута точность итерационного метода ε(N) = %6\n"
@@ -560,7 +569,7 @@ void PoissonWindow::updateMainReport(const SolverResult& resultMain, const Solve
         "Схема (СЛАУ) решена с невязкой || R(N)|| = %8, использована норма max\n"
         "\n"
         "Для контроля точности решения использована сетка с половинным шагом,\n"
-        "метод верхней релаксации с параметром ω2 = %7,\n"
+        "метод верхней релаксация с параметром ω2 = %15,\n"
         "применены критерии остановки по точности εмет-2 = %3 и по числу итераций Nmax-2 = %4\n"
         "\n"
         "На решение задачи (СЛАУ) затрачено итераций N2 = %9 и достигнута точность итерационного метода ε(N2) = %10\n"
@@ -578,14 +587,15 @@ void PoissonWindow::updateMainReport(const SolverResult& resultMain, const Solve
      .arg(maxIter)
      .arg(resultMain.iterations)
      .arg(resultMain.achieved_eps, 0, 'e', 2)
-     .arg(currentOmega, 0, 'f', 4)
+     .arg(omegaMain, 0, 'f', 4)
      .arg(resultMain.max_residual, 0, 'e', 2)
      .arg(resultHalf.iterations)
      .arg(resultHalf.achieved_eps, 0, 'e', 2)
      .arg(resultHalf.max_residual, 0, 'e', 2)
      .arg(xMax, 0, 'g', 5)
      .arg(yMax, 0, 'g', 5)
-     .arg(maxDiff, 0, 'e', 2);
+     .arg(maxDiff, 0, 'e', 2)
+     .arg(omegaHalf, 0, 'f', 4);
 
     mainReportText->setText(report);
 }
