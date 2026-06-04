@@ -75,7 +75,7 @@ SolverResult SORSolver::solve(const Problem& prob, int n, int m, double eps_max,
 
     for (int i = 1; i < n; ++i) {
         for (int j = 1; j < m; ++j) {
-            double left_side = 2.0 * (h2_inv + k2_inv) * grid.data[i][j] -
+            double left_side = A * grid.data[i][j] -
                                (grid.data[i-1][j] + grid.data[i+1][j]) * h2_inv -
                                (grid.data[i][j-1] + grid.data[i][j+1]) * k2_inv;
             

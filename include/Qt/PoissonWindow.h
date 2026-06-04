@@ -54,8 +54,7 @@ private:
     SurfaceWidget* surfaceWidget;
     SurfaceWidget* mainSurfaceWidget;
     
-    QTextEdit* reportText;
-    QTextEdit* mainReportText;
+    QTextEdit* helpTextEdit;    
     QTableWidget* resultTable;
     QTableWidget* mainResultTable;
 

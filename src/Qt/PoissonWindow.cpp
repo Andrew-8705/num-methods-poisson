@@ -244,8 +244,9 @@ PoissonWindow::PoissonWindow(QWidget* parent)
     , ySpinBox(nullptr)
     , drawButton(nullptr)
     , surfaceWidget(nullptr)
-    , reportText(nullptr)
+    , helpTextEdit(nullptr)      // ← добавлено
     , resultTable(nullptr)
+    , mainResultTable(nullptr)
     , currentN(50)
     , currentM(50)
     , currentOmega(1.0)
@@ -266,8 +267,15 @@ PoissonWindow::PoissonWindow(QWidget* parent)
     titleLabel->setAlignment(Qt::AlignHCenter);
     titleLabel->setStyleSheet("font-size: 14px; font-weight: bold;");
 
+    // ========== ПАНЕЛЬ УПРАВЛЕНИЯ СО СПРАВКОЙ СПРАВА ==========
     auto* controlLayout = new QHBoxLayout();
+    controlLayout->setSpacing(15);
+
+    // Левая часть - поля ввода
     auto* formLayout = new QFormLayout();
+    formLayout->setSpacing(5);
+    formLayout->setContentsMargins(0, 0, 0, 0);
+
     xSpinBox = new QSpinBox(this);
     xSpinBox->setRange(5, 10000);
     xSpinBox->setValue(currentN);
@@ -297,7 +305,7 @@ PoissonWindow::PoissonWindow(QWidget* parent)
     omegaSpinBox->setEnabled(false);
     connect(autoOmegaCheck, &QCheckBox::toggled, this, [this](bool checked) {
         omegaSpinBox->setEnabled(!checked);
-    });
+        });
 
     formLayout->addRow(QStringLiteral("n (шагов X):"), xSpinBox);
     formLayout->addRow(QStringLiteral("m (шагов Y):"), ySpinBox);
@@ -311,27 +319,52 @@ PoissonWindow::PoissonWindow(QWidget* parent)
 
     controlLayout->addLayout(formLayout);
     controlLayout->addWidget(drawButton);
-    controlLayout->addStretch();
+    controlLayout->addSpacing(20);
 
+    // ========== СПРАВКА СПРАВА (с детальным отчетом) ==========
+    auto* helpContainer = new QWidget(this);
+    helpContainer->setMinimumWidth(450);
+    helpContainer->setMaximumWidth(55000);
+    helpContainer->setStyleSheet("background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;");
+
+    auto* helpLayout = new QVBoxLayout(helpContainer);
+    helpLayout->setContentsMargins(10, 8, 10, 8);
+    helpLayout->setSpacing(5);
+
+    QLabel* helpTitle = new QLabel(QStringLiteral("Справка"), this);
+    helpTitle->setStyleSheet("font-weight: bold; font-size: 12px; color: #2c3e50;");
+
+    // Текстовое поле для детального отчета
+    helpTextEdit = new QTextEdit(this);
+    helpTextEdit->setReadOnly(true);
+    helpTextEdit->setMinimumHeight(120);
+    //helpTextEdit->setMaximumHeight(150);
+    helpTextEdit->setFontPointSize(8);
+    helpTextEdit->setStyleSheet(
+        "QTextEdit {"
+        "    background-color: white;"
+        "    border: 1px solid #ddd;"
+        "    border-radius: 3px;"
+        "    padding: 5px;"
+        "}"
+    );
+
+    helpLayout->addWidget(helpTitle);
+    helpLayout->addWidget(helpTextEdit);
+
+    controlLayout->addWidget(helpContainer, 1);
+    //controlLayout->addStretch();
+
+    // ========== ВКЛАДКИ С ЗАДАЧАМИ (без отчетов) ==========
     taskTabs = new QTabWidget(this);
 
+    // ----- Тестовая задача (без детального отчета) -----
     QWidget* testPage = new QWidget(this);
     auto* testPageLayout = new QHBoxLayout(testPage);
     auto* testLeftPanel = new QVBoxLayout();
     surfaceWidget = new SurfaceWidget(this);
     testLeftPanel->addWidget(surfaceWidget);
-    testLeftPanel->addSpacing(8);
-
-    QLabel* reportLabel = new QLabel(QStringLiteral("Справка"), this);
-    reportLabel->setStyleSheet("font-weight: bold; font-size: 12px;");
-    reportText = new QTextEdit(this);
-    reportText->setReadOnly(true);
-    reportText->setMaximumHeight(180);
-    reportText->setFontPointSize(8);
-
-    testLeftPanel->addWidget(reportLabel);
-    testLeftPanel->addWidget(reportText);
-    testLeftPanel->addStretch();
+    testLeftPanel->addStretch();  // график растягивается на всю высоту
 
     auto* testRightPanel = new QVBoxLayout();
     testRightPanel->setSpacing(8);
@@ -345,22 +378,12 @@ PoissonWindow::PoissonWindow(QWidget* parent)
     testPageLayout->addLayout(testLeftPanel, 1);
     testPageLayout->addLayout(testRightPanel, 1);
 
+    // ----- Основная задача (без детального отчета) -----
     QWidget* mainPage = new QWidget(this);
     auto* mainPageLayout = new QHBoxLayout(mainPage);
     auto* mainLeftPanel = new QVBoxLayout();
     mainSurfaceWidget = new SurfaceWidget(this);
     mainLeftPanel->addWidget(mainSurfaceWidget);
-    mainLeftPanel->addSpacing(8);
-
-    QLabel* mainReportLabel = new QLabel(QStringLiteral("Справка"), this);
-    mainReportLabel->setStyleSheet("font-weight: bold; font-size: 12px;");
-    mainReportText = new QTextEdit(this);
-    mainReportText->setReadOnly(true);
-    mainReportText->setMaximumHeight(180);
-    mainReportText->setFontPointSize(8);
-
-    mainLeftPanel->addWidget(mainReportLabel);
-    mainLeftPanel->addWidget(mainReportText);
     mainLeftPanel->addStretch();
 
     auto* mainRightPanel = new QVBoxLayout();
@@ -467,12 +490,12 @@ void PoissonWindow::updateReport(const SolverResult& result) {
     double yMax = exactField.c + maxJ * (exactField.d - exactField.c) / exactField.m;
 
     QString report = QStringLiteral(
-        "Для решения тестовой задачи использованы сетка с числом разбиений по x\n"
+        "Для решения тестовой задачи использованы сетка с числом разбиений по x "
         "n=%1 и числом разбиений по y m=%2,\n"
-        "метод верхней релаксации с параметром ω=%9, применены критерии\n"
+        "метод верхней релаксации с параметром ω=%9, применены критерии "
         "остановки по точности ε_мет=%3 и по числу итераций N_max=%4.\n"
         "\n"
-        "На решение схемы (СЛАУ) затрачено итераций N=%5\n"
+        "На решение схемы (СЛАУ) затрачено итераций N=%5 "
         "и достигнута точность итерационного метода ε(N)=%6.\n"
         "Схема (СЛАУ) решена с невязкой || R(N)|| = %8, использована норма max\n"
         "\n"
@@ -493,7 +516,9 @@ void PoissonWindow::updateReport(const SolverResult& result) {
      .arg(xMax, 0, 'g', 5)
      .arg(yMax, 0, 'g', 5);
     
-    reportText->setText(report);
+    if (helpTextEdit) {
+        helpTextEdit->setText(report);
+    }
 }
 
 void PoissonWindow::onTabChanged(int /*index*/) {
@@ -517,7 +542,7 @@ void PoissonWindow::drawMainProblem() {
     mainFieldHalf = PoissonBackend::fieldFromGrid(resultHalf.grid);
     
     if (mainField.n <= 0 || mainField.m <= 0 || mainFieldHalf.n <= 0 || mainFieldHalf.m <= 0) {
-        mainReportText->setText(QStringLiteral("Ошибка при решении задачи"));
+        helpTextEdit->setText(QStringLiteral("Ошибка при решении задачи"));
         return;
     }
 
@@ -557,18 +582,18 @@ void PoissonWindow::updateMainReport(const SolverResult& resultMain, const Solve
                                      double maxDiff, int maxI, int maxJ,
                                      double xMax, double yMax, double omegaMain, double omegaHalf) {
     QString report = QStringLiteral(
-        "Для решения основной задачи использована сетка с числом разбиений по x\n"
-        "n = %1 и числом разбиений по y m = %2, метод верхней релаксации с параметром\n"
-        "ω = %7, применены критерии остановки по точности\n"
-        "εмет = %3\n"
+        "Для решения основной задачи использована сетка с числом разбиений по x "
+        "n = %1 и числом разбиений по y m = %2,\n"
+        "метод верхней релаксации с параметром ω = %7, применены критерии остановки по точности "
+        "εмет = %3 "
         "и по числу итераций Nmax = %4\n"
         "\n"
-        "На решение схемы (СЛАУ) затрачено итераций N = %5\n"
+        "На решение схемы (СЛАУ) затрачено итераций N = %5 "
         "и достигнута точность итерационного метода ε(N) = %6\n"
         "\n"
         "Схема (СЛАУ) решена с невязкой || R(N)|| = %8, использована норма max\n"
         "\n"
-        "Для контроля точности решения использована сетка с половинным шагом,\n"
+        "Для контроля точности решения использована сетка с половинным шагом, "
         "метод верхней релаксация с параметром ω2 = %15,\n"
         "применены критерии остановки по точности εмет-2 = %3 и по числу итераций Nmax-2 = %4\n"
         "\n"
@@ -579,7 +604,7 @@ void PoissonWindow::updateMainReport(const SolverResult& resultMain, const Solve
         "Основная задача должна быть решена с точностью не хуже чем ε = 0.5⋅10^-6;\n"
         "задача решена с точностью ε2 = %14\n"
         "\n"
-        "Максимальное отклонение численных решений на основной сетке и сетке с\n"
+        "Максимальное отклонение численных решений на основной сетке и сетке с "
         "половинным шагом наблюдается в узле x=%12; y=%13\n"
         "В качестве начального приближения использована интерполяция по x."
     ).arg(currentN).arg(currentM)
@@ -597,7 +622,9 @@ void PoissonWindow::updateMainReport(const SolverResult& resultMain, const Solve
      .arg(maxDiff, 0, 'e', 2)
      .arg(omegaHalf, 0, 'f', 4);
 
-    mainReportText->setText(report);
+    if (helpTextEdit) {
+        helpTextEdit->setText(report);
+    }
 }
 
 void PoissonWindow::fillMainTables() {

@@ -1,3 +1,4 @@
+#define _USE_MATH_DEFINES
 #include "Qt/PoissonBackend.h"
 #include "Problems/MainProblem.h"
 #include "Solvers/SORSolver.h"
