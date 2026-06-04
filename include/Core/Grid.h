@@ -21,4 +21,5 @@ struct SolverResult {
     int iterations;
     double achieved_eps;
     double max_residual = 0.0;
+    double initial_residual = 0.0;
 };

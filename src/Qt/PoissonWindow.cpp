@@ -497,6 +497,7 @@ void PoissonWindow::updateReport(const SolverResult& result) {
         "\n"
         "На решение схемы (СЛАУ) затрачено итераций N=%5 "
         "и достигнута точность итерационного метода ε(N)=%6.\n"
+        "Невязка начального приближения || R(0)|| = %12\n"
         "Схема (СЛАУ) решена с невязкой || R(N)|| = %8, использована норма max\n"
         "\n"
         "Тестовая задача должна быть решена с погрешностью не более ε = 0.5⋅10^-6;\n"
@@ -514,7 +515,8 @@ void PoissonWindow::updateReport(const SolverResult& result) {
      .arg(result.max_residual, 0, 'e', 2)
      .arg(currentOmega, 0, 'f', 4)
      .arg(xMax, 0, 'g', 5)
-     .arg(yMax, 0, 'g', 5);
+     .arg(yMax, 0, 'g', 5)
+     .arg(result.initial_residual, 0, 'e', 2);
     
     if (helpTextEdit) {
         helpTextEdit->setText(report);
@@ -591,6 +593,7 @@ void PoissonWindow::updateMainReport(const SolverResult& resultMain, const Solve
         "На решение схемы (СЛАУ) затрачено итераций N = %5 "
         "и достигнута точность итерационного метода ε(N) = %6\n"
         "\n"
+        "Невязка начального приближения || R(0)|| = %17\n"
         "Схема (СЛАУ) решена с невязкой || R(N)|| = %8, использована норма max\n"
         "\n"
         "Для контроля точности решения использована сетка с половинным шагом, "
@@ -599,6 +602,7 @@ void PoissonWindow::updateMainReport(const SolverResult& resultMain, const Solve
         "\n"
         "На решение задачи (СЛАУ) затрачено итераций N2 = %9 и достигнута точность итерационного метода ε(N2) = %10\n"
         "\n"
+        "Невязка начального приближения на сетке с половинным шагом || R(0)2|| = %18\n"
         "Схема (СЛАУ) на сетке с половинным шагом решена с невязкой || R(N2)|| = %11, использована норма max\n"
         "\n"
         "Основная задача должна быть решена с точностью не хуже чем ε = 0.5⋅10^-6;\n"
@@ -621,7 +625,9 @@ void PoissonWindow::updateMainReport(const SolverResult& resultMain, const Solve
      .arg(yMax, 0, 'g', 5)
      .arg(maxDiff, 0, 'e', 2)
      .arg(omegaHalf, 0, 'f', 4)
-     .arg(eps / 100, 0, 'e', 2);
+     .arg(eps / 100, 0, 'e', 2)
+     .arg(resultMain.initial_residual, 0, 'e', 2)
+     .arg(resultHalf.initial_residual, 0, 'e', 2);
 
     if (helpTextEdit) {
         helpTextEdit->setText(report);

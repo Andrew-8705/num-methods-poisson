@@ -43,6 +43,22 @@ SolverResult SORSolver::solve(const Problem& prob, int n, int m, double eps_max,
         }
     }
 
+    // Вычисляем начальную невязку
+    double initialResidual = 0.0;
+    for (int i = 1; i < n; ++i) {
+        for (int j = 1; j < m; ++j) {
+            double left_side = A * grid.data[i][j] -
+                               (grid.data[i-1][j] + grid.data[i+1][j]) * h2_inv -
+                               (grid.data[i][j-1] + grid.data[i][j+1]) * k2_inv;
+            
+            double residual = std::abs(left_side - F[i][j]);
+            
+            if (residual > initialResidual) {
+                initialResidual = residual;
+            }
+        }
+    }
+
     int iter = 0;
     double current_eps = eps_max + 1.0;
     double maxResidual = 0.0;
@@ -87,5 +103,5 @@ SolverResult SORSolver::solve(const Problem& prob, int n, int m, double eps_max,
         }
     }
 
-    return {grid, iter, current_eps, maxResidual};
+    return {grid, iter, current_eps, maxResidual, initialResidual};
 }
