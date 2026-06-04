@@ -536,7 +536,7 @@ void PoissonWindow::drawMainProblem() {
     }
 
     SolverResult resultMain = PoissonBackend::solveMainProblem(currentN, currentM, eps, maxIter, omegaMain);
-    SolverResult resultHalf = PoissonBackend::solveMainProblem(currentN * 2, currentM * 2, eps, maxIter, omegaHalf);
+    SolverResult resultHalf = PoissonBackend::solveMainProblem(currentN * 2, currentM * 2, eps / 100, maxIter, omegaHalf);
 
     mainField = PoissonBackend::fieldFromGrid(resultMain.grid);
     mainFieldHalf = PoissonBackend::fieldFromGrid(resultHalf.grid);
@@ -595,7 +595,7 @@ void PoissonWindow::updateMainReport(const SolverResult& resultMain, const Solve
         "\n"
         "Для контроля точности решения использована сетка с половинным шагом, "
         "метод верхней релаксация с параметром ω2 = %15,\n"
-        "применены критерии остановки по точности εмет-2 = %3 и по числу итераций Nmax-2 = %4\n"
+        "применены критерии остановки по точности εмет-2 = %16 и по числу итераций Nmax-2 = %4\n"
         "\n"
         "На решение задачи (СЛАУ) затрачено итераций N2 = %9 и достигнута точность итерационного метода ε(N2) = %10\n"
         "\n"
@@ -620,7 +620,8 @@ void PoissonWindow::updateMainReport(const SolverResult& resultMain, const Solve
      .arg(xMax, 0, 'g', 5)
      .arg(yMax, 0, 'g', 5)
      .arg(maxDiff, 0, 'e', 2)
-     .arg(omegaHalf, 0, 'f', 4);
+     .arg(omegaHalf, 0, 'f', 4)
+     .arg(eps / 100, 0, 'e', 2);
 
     if (helpTextEdit) {
         helpTextEdit->setText(report);
